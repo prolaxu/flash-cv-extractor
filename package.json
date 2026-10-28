@@ -12,6 +12,15 @@
     "rust"
   ],
   "license": "AGPL-3.0",
+  "author": "Laxman Adhikari",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/prolaxu/flash-cv-extractor.git"
+  },
+  "homepage": "https://github.com/prolaxu/flash-cv-extractor#readme",
+  "bugs": {
+    "url": "https://github.com/prolaxu/flash-cv-extractor/issues"
+  },
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -45,7 +54,8 @@
     "fetch-corpus": "bash scripts/fetch-corpus.sh",
     "check-corpus": "node scripts/check-corpus.mjs",
     "score-bench": "node scripts/score-bench.mjs",
-    "audit-corpus": "node scripts/audit-corpus.mjs"
+    "audit-corpus": "node scripts/audit-corpus.mjs",
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

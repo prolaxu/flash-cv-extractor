@@ -1,0 +1,40 @@
+name: publish
+
+# Publishes to npm via OIDC trusted publishing: no npm token or OTP is needed,
+# and the package gets a provenance statement linking it to this commit.
+# Requires a trusted publisher configured for this package on npmjs.com:
+#   repository: prolaxu/flash-cv-extractor
+#   workflow:   publish.yml
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm 11.5.1 or newer
+      - run: npm install -g npm@latest
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+      - run: npm publish --provenance --access public
