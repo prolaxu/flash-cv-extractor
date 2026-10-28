@@ -1,0 +1,22 @@
+[package]
+name = "flash-cv-pdf-core"
+version = "0.1.0"
+edition = "2021"
+description = "PDF text extraction emitting positioned text items with real font names"
+license = "AGPL-3.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Object, xref and stream-filter layer. Default features pull in chrono/time,
+# which this crate does not need and which complicate the wasm build.
+lopdf = { version = "0.38", default-features = false }
+
+[target.wasm32-unknown-unknown.dependencies]
+# Reached only through lopdf's encryption *writing* paths, which are never
+# called here. Its "custom" backend keeps the wasm module free of javascript
+# imports; see __getrandom_v03_custom in lib.rs.
+getrandom = { version = "0.3", default-features = false }
+
+# [profile.release] lives in the workspace root; cargo ignores it here.
