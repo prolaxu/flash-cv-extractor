@@ -1,0 +1,4 @@
+# getrandom 0.3 requires an explicit backend choice for wasm32-unknown-unknown,
+# in addition to the feature flag. Without it the build fails outright.
+[target.wasm32-unknown-unknown]
+rustflags = ['--cfg', 'getrandom_backend="custom"']

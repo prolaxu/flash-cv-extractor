@@ -1,0 +1,17 @@
+# Workspace root.
+#
+# Two things have to live here rather than in the crate:
+#   * .cargo/config.toml beside this file, because cargo reads config from the
+#     working directory upwards and the wasm build needs a getrandom backend
+#   * [profile.*], because cargo ignores profile settings in workspace members
+[workspace]
+members = ["crates/pdf-core"]
+resolver = "2"
+
+[profile.release]
+# Optimise for size: this ships to browsers
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

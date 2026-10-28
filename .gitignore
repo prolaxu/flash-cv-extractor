@@ -1,0 +1,20 @@
+node_modules/
+dist/
+coverage/
+
+# downloaded corpora and the personal data they contain
+corpus/
+corpus-failures.txt
+
+# Rust build output (workspace root, and any stray per-crate dir)
+/target/
+crates/*/target/
+
+.env
+.DS_Store
+.vscode/
+.idea/
+*.log
+*.tmp
+*.bak
+*.swp
