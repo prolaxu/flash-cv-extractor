@@ -5,12 +5,16 @@
  * compiled to WebAssembly.
  *
  * @example
- * import { extractCv, createWasmEngine } from "flash-cv-extractor";
+ * import { FlashCvExtractor } from "flash-cv-extractor";
  *
- * const engine = createWasmEngine("/flash-cv-pdf-core.wasm");
- * const cv = await extractCv(pdfBytes, { engine });
+ * const extractor = new FlashCvExtractor("/flash-cv-pdf-core.wasm");
+ * const cv = await extractor.extract(pdfBytes);
  * console.log(cv.profile.name, cv.experience.length);
  */
+
+// High level api
+export { FlashCvExtractor } from "./extractor";
+export type { CvAnalysis } from "./extractor";
 
 // Main entry points
 export { extractCv, extractCvFromItems, toSections, toLines } from "./pipeline";
