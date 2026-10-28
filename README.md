@@ -115,6 +115,19 @@ for (const file of await readdir("./cvs")) {
 console.table(rows);
 ```
 
+### Run the browser demo
+
+[`example/index.html`](./example/index.html) is a working page: choose a PDF
+and it renders the extracted CV, with copy and download for the raw JSON.
+
+```bash
+npm run build
+npx serve .        # open http://localhost:3000/example/
+```
+
+It imports the built files from `dist/`, so it must be served over http rather
+than opened from `file://`.
+
 ## Result
 
 ```typescript
