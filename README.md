@@ -5,10 +5,10 @@ and compiled to WebAssembly, so there is no worker to configure, no companion
 JavaScript, and nothing to wire up in a bundler.
 
 ```typescript
-import { extractCv, createWasmEngine } from "flash-cv-extractor";
+import { FlashCvExtractor } from "flash-cv-extractor";
 
-const engine = createWasmEngine("/flash-cv-pdf-core.wasm");
-const cv = await extractCv(await file.arrayBuffer(), { engine });
+const extractor = new FlashCvExtractor("/flash-cv-pdf-core.wasm");
+const cv = await extractor.extract(await file.arrayBuffer());
 
 cv.profile.name;        // "Suresh Tamang"
 cv.profile.email;       // "itsmesureshtamang@gmail.com"
@@ -43,20 +43,20 @@ engine at it.
 ### Browser
 
 ```typescript
-import { createWasmEngine, extractCv } from "flash-cv-extractor";
+import { FlashCvExtractor } from "flash-cv-extractor";
 // Vite: import the wasm file as a url
 import wasmUrl from "flash-cv-extractor/wasm?url";
 
-// Create the engine once and reuse it. The module is compiled on first use
-// and cached for every document after that.
-const engine = createWasmEngine(wasmUrl);
+// Create the extractor once and reuse it. The wasm module is compiled on the
+// first document and cached for every one after that.
+const extractor = new FlashCvExtractor(wasmUrl);
 
 const input = document.querySelector<HTMLInputElement>("#cv")!;
 input.addEventListener("change", async () => {
   const file = input.files?.[0];
   if (!file) return;
 
-  const cv = await extractCv(new Uint8Array(await file.arrayBuffer()), { engine });
+  const cv = await extractor.extract(await file.arrayBuffer());
   console.log(cv.profile.name, cv.experience.length);
 });
 ```
@@ -66,7 +66,7 @@ With webpack, Next.js, or any other bundler, copy
 folder and pass its URL. A CDN works too:
 
 ```typescript
-const engine = createWasmEngine(
+const extractor = new FlashCvExtractor(
   "https://cdn.example.com/flash-cv-pdf-core.wasm"
 );
 ```
@@ -74,20 +74,20 @@ const engine = createWasmEngine(
 ### Node
 
 ```typescript
-import { createWasmEngine, extractCv } from "flash-cv-extractor";
+import { FlashCvExtractor } from "flash-cv-extractor";
 
-const engine = createWasmEngine(
+const extractor = new FlashCvExtractor(
   "./node_modules/flash-cv-extractor/dist/flash-cv-pdf-core.wasm"
 );
 
-const cv = await extractCv("./resume.pdf", { engine });
+const cv = await extractor.extract("./resume.pdf");
 console.log(cv.profile.name);
 ```
 
 ### From a URL
 
 ```typescript
-const cv = await extractCv("https://example.com/cv.pdf", { engine });
+const cv = await extractor.extract("https://example.com/cv.pdf");
 ```
 
 ### Batch a folder (Node)
@@ -95,9 +95,9 @@ const cv = await extractCv("https://example.com/cv.pdf", { engine });
 ```typescript
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { createWasmEngine, extractCv } from "flash-cv-extractor";
+import { FlashCvExtractor } from "flash-cv-extractor";
 
-const engine = createWasmEngine(
+const extractor = new FlashCvExtractor(
   "./node_modules/flash-cv-extractor/dist/flash-cv-pdf-core.wasm"
 );
 
@@ -105,7 +105,7 @@ const rows = [];
 for (const file of await readdir("./cvs")) {
   if (!file.toLowerCase().endsWith(".pdf")) continue;
   try {
-    const cv = await extractCv(await readFile(join("./cvs", file)), { engine });
+    const cv = await extractor.extract(await readFile(join("./cvs", file)));
     rows.push({ file, name: cv.profile.name, jobs: cv.experience.length });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -178,24 +178,43 @@ so you can render it without guarding.
 
 ## API
 
-### `createWasmEngine(source)`
+### `new FlashCvExtractor(source)`
 
-Loads and instantiates the Rust core. Accepts:
+Creates the extractor and, where needed, loads the wasm engine. `source` is
+either where to load the engine from, or a `PdfEngine` of your own:
 
 | source | example |
 | --- | --- |
 | URL string | `"/flash-cv-pdf-core.wasm"` or `"https://cdn.example.com/...wasm"` |
-| URL object | `new URL("./x.wasm", import.meta.url)` (browser) |
+| filesystem path (Node) | `"./node_modules/flash-cv-extractor/dist/flash-cv-pdf-core.wasm"` |
+| URL object | `new URL("/flash-cv-pdf-core.wasm", location.href)` (browser) |
 | `ArrayBuffer` / `Uint8Array` | wasm bytes you already have |
 | `WebAssembly.Module` | a module you compiled yourself |
+| `PdfEngine` | a function of your own |
 
-Returns a `PdfEngine`: `(source) => Promise<TextItem[]>`. The module declares
-no imports, so an empty import object is enough to instantiate it.
+The wasm module declares no imports, so an empty import object is enough to
+instantiate it.
 
-### `extractCv(source, { engine })`
+### `extractor.extract(source)`
 
-Accepts a `Uint8Array`, `ArrayBuffer`, filesystem path, `URL`, or an `http(s)`
-URL, and returns a `Cv`.
+Reads the document and returns a `Cv`. `source` may be a `Uint8Array`,
+`ArrayBuffer`, filesystem path, `URL`, or an `http(s)` URL.
+
+```typescript
+const cv = await extractor.extract("./resume.pdf");
+```
+
+### `extractor.analyse(source)`
+
+Reads the document **once** and returns every stage, for when a field came out
+wrong and you need to see what the parser saw:
+
+```typescript
+const { items, lines, sections, cv } = await extractor.analyse(pdfBytes);
+
+console.log(Object.keys(sections));
+// [ "profile", "Experience", "Education", "Skills" ]
+```
 
 ### Errors
 
@@ -203,7 +222,7 @@ Malformed PDFs and failed fetches throw, so a batch job should catch per file:
 
 ```typescript
 try {
-  const cv = await extractCv(bytes, { engine });
+  const cv = await extractor.extract(bytes);
 } catch (error) {
   console.error("not a readable pdf:", error.message);
 }
@@ -212,9 +231,50 @@ try {
 Scanned PDFs do not throw; they simply contain no text, so every field comes
 back empty.
 
+### Functional api
+
+The class is a thin wrapper over the same functions. They stay exported for
+cases the class does not cover — running one step at a time, sharing an engine
+between modules, or extracting from items another tool produced:
+
+```typescript
+import {
+  createWasmEngine,
+  extractCv,
+  extractCvFromItems,
+  toLines,
+  toSections,
+  extractCvFromSections,
+} from "flash-cv-extractor";
+
+const engine = createWasmEngine("/flash-cv-pdf-core.wasm");
+const cv = await extractCv(pdfBytes, { engine });
+```
+
 ## Working with the steps
 
-The pipeline is four steps, and each is exported so you can see what happened:
+The pipeline is four steps. `analyse` reads the document once and returns all
+of them, so a CV that came out wrong can be inspected without reading the PDF
+again:
+
+```typescript
+const { items, lines, sections, cv } = await extractor.analyse(pdfBytes);
+```
+
+The usual cause is a heading that was not recognised, or an entry that merged
+with its neighbour, and both are visible in `sections`:
+
+```typescript
+console.log(Object.keys(sections));
+// [ "profile", "Experience", "Education", "Skills" ]
+
+for (const line of sections["Experience"] ?? []) {
+  console.log(line.map((item) => item.text).join(" "));
+}
+```
+
+Each step is also exported as a function, for when you want to run one of them
+or hold on to an intermediate result:
 
 ```typescript
 import {
@@ -227,20 +287,6 @@ const items = await engine(pdfBytes);        // 1. pdf     -> text items
 const lines = toLines(items);                // 2. items   -> lines
 const sections = toSections(items);          // 3. items   -> sections
 const cv = extractCvFromSections(sections);  // 4. sections -> cv
-```
-
-When a CV comes out wrong, inspect the sections — the usual cause is a heading
-that was not recognised, or an entry that merged with its neighbour:
-
-```typescript
-const sections = toSections(items);
-
-console.log(Object.keys(sections));
-// [ "profile", "Experience", "Education", "Skills" ]
-
-for (const line of sections["Experience"] ?? []) {
-  console.log(line.map((item) => item.text).join(" "));
-}
 ```
 
 `extractCvFromItems(items)` runs steps 2–4 in one call.
@@ -263,7 +309,13 @@ const myEngine: PdfEngine = async (source) => [
     hasEOL: true,
   },
 ];
+
+const extractor = new FlashCvExtractor(myEngine);
+const cv = await extractor.extract(pdfBytes);
 ```
+
+If another tool already gave you the items, skip the extractor and call
+`extractCvFromItems(items)`.
 
 | field | meaning |
 | --- | --- |
@@ -454,6 +506,7 @@ better parser. More labelled data is the blocker, not technique.
 ```
 src/
   index.ts          public api
+  extractor.ts      the FlashCvExtractor class
   types.ts          TextItem in, Cv out
   pipeline.ts       the four steps, wired together
   engine/
