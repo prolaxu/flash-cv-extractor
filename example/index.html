@@ -3,493 +3,632 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>flash-cv-extractor — resume demo</title>
+    <title>flash-cv-extractor — applicant demo</title>
+
+    <!-- CDN builds: Vue 3 (full build, so the in-page template compiles) and
+         Tailwind. Tailwind's Play CDN is meant for demos, not production. -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      :root {
-        color-scheme: light dark;
-        --bg: #f5f6fa;
-        --panel: #ffffff;
-        --text: #15171e;
-        --muted: #626977;
-        --line: #e1e4ec;
-        --accent: #4f46e5;
-        --accent-soft: #eef0ff;
-        --ok: #15803d;
-        --warn-bg: #fff7ed;
-        --warn-line: #fed7aa;
-        --warn-text: #9a3412;
-        --radius: 14px;
-        --shadow: 0 1px 2px rgb(22 24 35 / 5%), 0 8px 24px rgb(22 24 35 / 4%);
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #0e1016;
-          --panel: #171a22;
-          --text: #e9ebf2;
-          --muted: #9aa1b1;
-          --line: #272c38;
-          --accent: #8b8cf8;
-          --accent-soft: #232448;
-          --ok: #4ade80;
-          --warn-bg: #2a1c10;
-          --warn-line: #5a3820;
-          --warn-text: #fdba74;
-          --shadow: 0 1px 2px rgb(0 0 0 / 40%);
-        }
-      }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        background: var(--bg);
-        color: var(--text);
-        font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      }
-      .wrap { max-width: 880px; margin: 0 auto; padding: 40px 20px 64px; }
-      header h1 { margin: 0 0 4px; font-size: 26px; letter-spacing: -0.02em; }
-      header p { margin: 0; color: var(--muted); }
-      header code { font-size: 0.92em; }
-
-      /* drop zone */
-      .drop {
-        display: flex; flex-direction: column; align-items: center; gap: 6px;
-        margin-top: 26px; padding: 42px 24px;
-        background: var(--panel); border: 2px dashed var(--line);
-        border-radius: var(--radius); cursor: pointer; text-align: center;
-        transition: border-color 0.15s, background 0.15s;
-      }
-      .drop:hover, .drop:focus-visible, .drop.over {
-        border-color: var(--accent); background: var(--accent-soft); outline: none;
-      }
-      .drop strong { font-size: 16px; }
-      .drop span { color: var(--muted); font-size: 13.5px; }
-      .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-      .icon { font-size: 26px; line-height: 1; }
-
-      /* status */
-      .status { display: none; align-items: center; gap: 9px; margin-top: 16px; color: var(--muted); font-size: 14px; }
-      .status.show { display: flex; }
-      .status.error { color: var(--warn-text); }
-      .status .spinner {
-        width: 14px; height: 14px; border: 2px solid var(--line);
-        border-top-color: var(--accent); border-radius: 50%;
-        animation: spin 0.7s linear infinite; flex: none;
-      }
-      @keyframes spin { to { transform: rotate(360deg); } }
-
-      .notice {
-        margin-top: 16px; padding: 12px 14px; border-radius: 10px;
-        background: var(--warn-bg); border: 1px solid var(--warn-line);
-        color: var(--warn-text); font-size: 14px;
-      }
-
-      /* results */
-      #result { margin-top: 28px; }
-      .card {
-        background: var(--panel); border: 1px solid var(--line);
-        border-radius: var(--radius); box-shadow: var(--shadow);
-        padding: 22px 24px; margin-bottom: 16px;
-      }
-      .profile h2 { margin: 0 0 10px; font-size: 24px; letter-spacing: -0.02em; }
-      .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-      .chip {
-        display: inline-block; padding: 3px 10px; border-radius: 999px;
-        background: var(--accent-soft); color: var(--accent);
-        font-size: 13px; text-decoration: none;
-      }
-      a.chip:hover { text-decoration: underline; }
-      .summary { margin: 14px 0 0; color: var(--muted); }
-      .muted { color: var(--muted); font-size: 13.5px; margin: 0; }
-
-      h3.section-title {
-        margin: 26px 0 12px; font-size: 13px; letter-spacing: 0.08em;
-        text-transform: uppercase; color: var(--muted);
-      }
-      .entry + .entry {
-        margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line);
-      }
-      .entry-head {
-        display: flex; flex-wrap: wrap; gap: 4px 12px;
-        align-items: baseline; justify-content: space-between;
-      }
-      .entry-head .left { font-weight: 600; }
-      .entry-head .company { font-weight: 500; }
-      .entry-head .sep { color: var(--muted); font-weight: 400; }
-      .date { color: var(--muted); font-size: 13px; white-space: nowrap; }
-      .entry ul { margin: 8px 0 0; padding-left: 20px; }
-      .entry li { margin: 3px 0; }
-      .entry li::marker { color: var(--accent); }
-
-      .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
-      button {
-        font: inherit; font-size: 14px; padding: 8px 14px; cursor: pointer;
-        color: var(--text); background: var(--panel);
-        border: 1px solid var(--line); border-radius: 9px;
-      }
-      button:hover { border-color: var(--accent); color: var(--accent); }
-      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-      button.primary:hover { filter: brightness(1.07); color: #fff; }
-
-      details { margin-top: 18px; }
-      summary { cursor: pointer; color: var(--muted); font-size: 14px; }
-      pre {
-        overflow: auto; max-height: 460px; margin: 10px 0 0; padding: 14px;
-        background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-        font-size: 12.5px; line-height: 1.5;
-      }
-      footer { margin-top: 40px; color: var(--muted); font-size: 13px; }
-      footer code { color: var(--text); }
+      [v-cloak] { display: none; }
+      html { scrollbar-gutter: stable; }
     </style>
   </head>
-  <body>
-    <div class="wrap">
-      <header>
-        <h1>flash-cv-extractor</h1>
-        <p>
-          Drop a resume PDF to see the structured data. Everything runs in your
-          browser; the file is never uploaded.
+
+  <body class="bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
+    <div id="app" v-cloak class="mx-auto max-w-4xl px-5 py-10">
+      <header class="mb-8">
+        <h1 class="text-3xl font-semibold tracking-tight">flash-cv-extractor</h1>
+        <p class="mt-1 text-slate-500 dark:text-slate-400">
+          Drop one or more resumes, then click a name to see the extracted CV.
+          Everything runs in your browser — files are never uploaded.
         </p>
       </header>
 
-      <label class="drop" id="drop" for="file" tabindex="0" role="button">
-        <span class="icon" aria-hidden="true">📄</span>
-        <strong>Choose a PDF or drop it here</strong>
-        <span>Text-based PDFs only. Scans need OCR first.</span>
-        <input id="file" type="file" accept="application/pdf,.pdf" />
+      <!-- picker / drop zone -->
+      <label
+        class="flex cursor-pointer flex-col items-center gap-1.5 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition"
+        :class="dragging
+          ? 'border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-500/10'
+          : 'border-slate-300 bg-white hover:border-indigo-400 hover:bg-indigo-50/40 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-indigo-500 dark:hover:bg-indigo-500/5'"
+        @dragenter.prevent="dragging = true"
+        @dragover.prevent="dragging = true"
+        @dragleave.prevent="onDragLeave"
+        @drop.prevent="onDrop"
+      >
+        <span class="text-2xl" aria-hidden="true">📄</span>
+        <span class="font-medium">Choose PDFs or drop them here</span>
+        <span class="text-sm text-slate-500 dark:text-slate-400">
+          Select several at once. Text-based PDFs only; scans need OCR first.
+        </span>
+        <input
+          id="files"
+          type="file"
+          accept="application/pdf,.pdf"
+          multiple
+          class="sr-only"
+          @change="onPick"
+        />
       </label>
 
-      <div class="status" id="status" role="status" aria-live="polite"></div>
-      <div class="notice" id="notice" hidden></div>
+      <p
+        v-if="notice"
+        class="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200"
+      >
+        {{ notice }}
+      </p>
 
-      <section id="result" hidden>
-        <div class="card profile">
-          <h2 id="name"></h2>
-          <div class="chips" id="contact"></div>
-          <p class="summary" id="summary"></p>
+      <!-- applicant list -->
+      <div v-if="applicants.length" class="mt-8 flex items-center justify-between gap-4">
+        <p class="text-sm text-slate-500 dark:text-slate-400">{{ summary }}</p>
+        <button
+          type="button"
+          class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:text-white"
+          :disabled="processing"
+          @click="clearAll"
+        >
+          Clear all
+        </button>
+      </div>
+
+      <ul v-if="applicants.length" class="mt-3 space-y-2">
+        <li
+          v-for="applicant in applicants"
+          :key="applicant.id"
+          class="flex overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-indigo-300 hover:shadow dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500/60"
+        >
+          <button
+            type="button"
+            class="flex min-w-0 flex-1 items-center gap-3 p-4 text-left disabled:cursor-default"
+            :disabled="applicant.status !== 'done'"
+            @click="openDetail(applicant)"
+          >
+            <span
+              class="grid h-10 w-10 flex-none place-items-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
+            >
+              {{ initials(applicant) }}
+            </span>
+
+            <span class="min-w-0 flex-1">
+              <span class="flex items-center gap-2">
+                <span class="truncate font-medium">{{ title(applicant) }}</span>
+                <span
+                  v-if="applicant.status === 'queued' || applicant.status === 'reading'"
+                  class="h-3.5 w-3.5 flex-none animate-spin rounded-full border-2 border-slate-300 border-t-indigo-500 dark:border-slate-600 dark:border-t-indigo-400"
+                  aria-hidden="true"
+                ></span>
+              </span>
+              <span
+                class="mt-0.5 block truncate text-sm"
+                :class="applicant.status === 'error'
+                  ? 'text-red-600 dark:text-red-400'
+                  : 'text-slate-500 dark:text-slate-400'"
+              >
+                {{ subtitle(applicant) }}
+              </span>
+            </span>
+
+            <span
+              v-if="applicant.status === 'done'"
+              class="hidden flex-none items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 sm:flex"
+            >
+              <span v-if="applicant.cv.experience.length" class="rounded-full bg-slate-100 px-2 py-0.5 dark:bg-slate-800">
+                {{ applicant.cv.experience.length }} jobs
+              </span>
+              <span v-if="applicant.cv.education.length" class="rounded-full bg-slate-100 px-2 py-0.5 dark:bg-slate-800">
+                {{ applicant.cv.education.length }} schools
+              </span>
+              <span v-if="skillCount(applicant)" class="rounded-full bg-slate-100 px-2 py-0.5 dark:bg-slate-800">
+                {{ skillCount(applicant) }} skills
+              </span>
+              <span class="text-slate-300 dark:text-slate-600" aria-hidden="true">→</span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            class="border-l border-slate-200 px-4 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            :aria-label="'Remove ' + applicant.filename"
+            @click="remove(applicant)"
+          >
+            ✕
+          </button>
+        </li>
+      </ul>
+
+      <p v-else class="mt-12 text-center text-sm text-slate-400 dark:text-slate-500">
+        No resumes yet.
+      </p>
+
+      <!-- detail dialog -->
+      <div
+        v-if="selected"
+        class="fixed inset-0 z-50 overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm sm:p-8"
+        @click.self="closeDetail"
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          :aria-label="'Extracted cv for ' + title(selected)"
+          class="mx-auto w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900"
+        >
+          <div class="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-6 py-5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
+            <div class="flex items-start justify-between gap-4">
+              <div class="min-w-0">
+                <h2 class="truncate text-xl font-semibold">{{ selected.cv.profile.name || "Unnamed candidate" }}</h2>
+                <p class="mt-0.5 truncate text-sm text-slate-500 dark:text-slate-400">
+                  {{ selected.filename }} · extracted in {{ selected.ms.toFixed(1) }} ms
+                </p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <a
+                    v-if="selected.cv.profile.email"
+                    :href="'mailto:' + selected.cv.profile.email"
+                    class="rounded-full bg-indigo-50 px-2.5 py-1 text-xs text-indigo-700 hover:underline dark:bg-indigo-500/15 dark:text-indigo-300"
+                  >{{ selected.cv.profile.email }}</a>
+                  <a
+                    v-if="selected.cv.profile.phone"
+                    :href="'tel:' + phoneHref(selected.cv.profile.phone)"
+                    class="rounded-full bg-indigo-50 px-2.5 py-1 text-xs text-indigo-700 hover:underline dark:bg-indigo-500/15 dark:text-indigo-300"
+                  >{{ selected.cv.profile.phone }}</a>
+                  <a
+                    v-if="selected.cv.profile.url"
+                    :href="urlHref(selected.cv.profile.url)"
+                    target="_blank"
+                    rel="noreferrer"
+                    class="rounded-full bg-indigo-50 px-2.5 py-1 text-xs text-indigo-700 hover:underline dark:bg-indigo-500/15 dark:text-indigo-300"
+                  >{{ selected.cv.profile.url }}</a>
+                  <span
+                    v-if="selected.cv.profile.location"
+                    class="rounded-full bg-indigo-50 px-2.5 py-1 text-xs text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
+                  >{{ selected.cv.profile.location }}</span>
+                </div>
+              </div>
+              <button
+                ref="closeButton"
+                type="button"
+                class="flex-none rounded-lg border border-slate-300 px-2.5 py-1 text-sm text-slate-500 transition hover:border-slate-400 hover:text-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:text-white"
+                @click="closeDetail"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+
+          <div class="px-6 py-6">
+            <p v-if="selected.cv.profile.summary" class="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              {{ selected.cv.profile.summary }}
+            </p>
+
+            <div
+              v-if="!hasAny(selected.cv)"
+              class="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200"
+            >
+              Nothing was extracted from this file. It probably has no text layer —
+              a scan or an image — so it needs OCR before it can be parsed.
+            </div>
+
+            <section v-if="selected.cv.experience.length" class="mt-6">
+              <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Experience</h3>
+              <div class="mt-3 space-y-4">
+                <article
+                  v-for="(job, index) in selected.cv.experience"
+                  :key="index"
+                  class="border-t border-slate-200 pt-4 first:border-0 first:pt-0 dark:border-slate-800"
+                >
+                  <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <p class="font-medium">
+                      {{ job.jobTitle || job.company || "Untitled role" }}
+                      <span v-if="job.jobTitle && job.company" class="font-normal text-slate-500 dark:text-slate-400"> · {{ job.company }}</span>
+                    </p>
+                    <p v-if="job.date" class="text-xs text-slate-500 dark:text-slate-400">{{ job.date }}</p>
+                  </div>
+                  <ul
+                    v-if="job.descriptions.length"
+                    class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600 dark:text-slate-300"
+                  >
+                    <li v-for="(line, i) in job.descriptions" :key="i">{{ line }}</li>
+                  </ul>
+                </article>
+              </div>
+            </section>
+
+            <section v-if="selected.cv.education.length" class="mt-6">
+              <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Education</h3>
+              <div class="mt-3 space-y-4">
+                <article
+                  v-for="(school, index) in selected.cv.education"
+                  :key="index"
+                  class="border-t border-slate-200 pt-4 first:border-0 first:pt-0 dark:border-slate-800"
+                >
+                  <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <p class="font-medium">
+                      {{ school.degree || school.school || "Education entry" }}
+                      <span v-if="school.degree && school.school" class="font-normal text-slate-500 dark:text-slate-400"> · {{ school.school }}</span>
+                    </p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                      {{ [school.date, school.gpa && 'GPA ' + school.gpa].filter(Boolean).join(' · ') }}
+                    </p>
+                  </div>
+                  <ul
+                    v-if="school.descriptions.length"
+                    class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600 dark:text-slate-300"
+                  >
+                    <li v-for="(line, i) in school.descriptions" :key="i">{{ line }}</li>
+                  </ul>
+                </article>
+              </div>
+            </section>
+
+            <section v-if="selected.cv.projects.length" class="mt-6">
+              <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Projects</h3>
+              <div class="mt-3 space-y-4">
+                <article
+                  v-for="(project, index) in selected.cv.projects"
+                  :key="index"
+                  class="border-t border-slate-200 pt-4 first:border-0 first:pt-0 dark:border-slate-800"
+                >
+                  <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <p class="font-medium">{{ project.name || "Untitled project" }}</p>
+                    <p v-if="project.date" class="text-xs text-slate-500 dark:text-slate-400">{{ project.date }}</p>
+                  </div>
+                  <ul
+                    v-if="project.descriptions.length"
+                    class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600 dark:text-slate-300"
+                  >
+                    <li v-for="(line, i) in project.descriptions" :key="i">{{ line }}</li>
+                  </ul>
+                </article>
+              </div>
+            </section>
+
+            <section v-if="selected.cv.skills.featured.length || selected.cv.skills.descriptions.length" class="mt-6">
+              <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Skills</h3>
+              <div v-if="selected.cv.skills.featured.length" class="mt-3 flex flex-wrap gap-2">
+                <span
+                  v-for="(skill, index) in selected.cv.skills.featured"
+                  :key="index"
+                  class="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >{{ skill }}</span>
+              </div>
+              <ul
+                v-if="selected.cv.skills.descriptions.length"
+                class="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-600 dark:text-slate-300"
+              >
+                <li v-for="(line, index) in selected.cv.skills.descriptions" :key="index">{{ line }}</li>
+              </ul>
+            </section>
+
+            <section v-if="selected.cv.certifications.length" class="mt-6">
+              <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Certifications</h3>
+              <div class="mt-3 flex flex-wrap gap-2">
+                <span
+                  v-for="(cert, index) in selected.cv.certifications"
+                  :key="index"
+                  class="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >{{ cert }}</span>
+              </div>
+            </section>
+
+            <section v-if="selected.cv.languages.length" class="mt-6">
+              <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Languages</h3>
+              <div class="mt-3 flex flex-wrap gap-2">
+                <span
+                  v-for="(language, index) in selected.cv.languages"
+                  :key="index"
+                  class="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >{{ language }}</span>
+              </div>
+            </section>
+
+            <details class="mt-6">
+              <summary class="cursor-pointer text-sm text-slate-500 dark:text-slate-400">Raw JSON</summary>
+              <pre class="mt-3 max-h-80 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs leading-relaxed dark:border-slate-800 dark:bg-slate-950">{{ json }}</pre>
+            </details>
+          </div>
+
+          <div class="flex flex-wrap gap-2 border-t border-slate-200 px-6 py-4 dark:border-slate-800">
+            <button
+              type="button"
+              class="rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-medium text-white transition hover:bg-indigo-500"
+              @click="copyJson"
+            >{{ copied ? "Copied" : "Copy JSON" }}</button>
+            <button
+              type="button"
+              class="rounded-lg border border-slate-300 px-3.5 py-2 text-sm transition hover:border-slate-400 dark:border-slate-700 dark:hover:border-slate-500"
+              @click="downloadJson"
+            >Download JSON</button>
+            <button
+              type="button"
+              class="ml-auto rounded-lg px-3.5 py-2 text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+              @click="closeDetail"
+            >Done</button>
+          </div>
         </div>
+      </div>
 
-        <div id="sections"></div>
-
-        <div class="actions">
-          <button class="primary" id="copy" type="button">Copy JSON</button>
-          <button id="download" type="button">Download JSON</button>
-          <button id="reset" type="button">Another file</button>
-        </div>
-
-        <details>
-          <summary>Raw JSON</summary>
-          <pre id="json"></pre>
-        </details>
-      </section>
-
-      <footer>
-        Built from <code>../dist/</code>. Run <code>npm run build</code>, then
-        serve the repo root (for example <code>npx serve .</code>) and open
-        <code>/example/</code>.
+      <footer class="mt-10 text-xs text-slate-400 dark:text-slate-500">
+        Built from <code class="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">../dist/</code>.
+        Run <code class="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">npm run build</code>,
+        serve the repo root (<code class="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">npx serve .</code>)
+        and open <code class="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">/example/</code>.
       </footer>
     </div>
 
     <script type="module">
-      const fileInput = document.getElementById("file");
-      const drop = document.getElementById("drop");
-      const statusEl = document.getElementById("status");
-      const noticeEl = document.getElementById("notice");
-      const resultEl = document.getElementById("result");
-      const nameEl = document.getElementById("name");
-      const contactEl = document.getElementById("contact");
-      const summaryEl = document.getElementById("summary");
-      const sectionsEl = document.getElementById("sections");
-      const jsonEl = document.getElementById("json");
+      const { createApp, ref, computed, nextTick, onMounted, onBeforeUnmount } = Vue;
 
-      let currentCv = null;
-      let extractorPromise = null;
+      createApp({
+        setup() {
+          const applicants = ref([]);
+          const selected = ref(null);
+          const dragging = ref(false);
+          const notice = ref("");
+          const processing = ref(false);
+          const copied = ref(false);
+          const closeButton = ref(null);
 
-      /** Build the extractor once; the wasm module is cached inside it. */
-      const getExtractor = () => {
-        extractorPromise ??= (async () => {
-          try {
-            const { FlashCvExtractor } = await import("../dist/index.js");
-            const wasmUrl = new URL("../dist/flash-cv-pdf-core.wasm", location.href).href;
-            return new FlashCvExtractor(wasmUrl);
-          } catch (error) {
-            extractorPromise = null; // let the next attempt try again
-            throw error;
-          }
-        })();
-        return extractorPromise;
-      };
+          let extractorPromise = null;
 
-      const setStatus = (text, kind = "") => {
-        statusEl.className = "status" + (text ? " show" : "") + (kind ? " " + kind : "");
-        statusEl.replaceChildren();
-        if (!text) return;
-        if (kind === "busy") {
-          const spinner = document.createElement("span");
-          spinner.className = "spinner";
-          statusEl.append(spinner);
-        }
-        statusEl.append(document.createTextNode(text));
-      };
+          const getExtractor = () => {
+            extractorPromise ??= (async () => {
+              try {
+                const { FlashCvExtractor } = await import("../dist/index.js");
+                const wasm = new URL("../dist/flash-cv-pdf-core.wasm", location.href).href;
+                return new FlashCvExtractor(wasm);
+              } catch (error) {
+                extractorPromise = null; // allow a retry after a reload
+                throw error;
+              }
+            })();
+            return extractorPromise;
+          };
 
-      const showNotice = (text) => {
-        noticeEl.textContent = text;
-        noticeEl.hidden = !text;
-      };
+          const isPdf = (file) =>
+            file.type === "application/pdf" || /\.pdf$/i.test(file.name);
 
-      /** Create an element, with text (never html) and optional attributes. */
-      const el = (tag, props = {}, ...children) => {
-        const node = document.createElement(tag);
-        for (const [key, value] of Object.entries(props)) {
-          if (key === "class") node.className = value;
-          else if (key === "href") node.href = value;
-          else node.setAttribute(key, value);
-        }
-        for (const child of children) {
-          if (child == null || child === "") continue;
-          node.append(child instanceof Node ? child : document.createTextNode(String(child)));
-        }
-        return node;
-      };
+          const friendlyError = (error) => {
+            const message = error instanceof Error ? error.message : String(error);
+            if (/Failed to fetch|dynamically imported module|Importing a module script/i.test(message)) {
+              return "Could not load the built files. Run `npm run build` and serve the folder over http.";
+            }
+            return message;
+          };
 
-      const chip = (text, href) => el(href ? "a" : "span", { class: "chip", ...(href ? { href } : {}) }, text);
+          const add = (fileList) => {
+            const incoming = Array.from(fileList ?? []);
+            if (!incoming.length) return;
 
-      const contactChips = (profile) => {
-        const chips = [];
-        if (profile.email) chips.push(chip(profile.email, "mailto:" + profile.email));
-        if (profile.phone) chips.push(chip(profile.phone, "tel:" + profile.phone.replace(/[^\d+]/g, "")));
-        if (profile.url) {
-          const href = /^https?:\/\//i.test(profile.url) ? profile.url : "https://" + profile.url;
-          chips.push(chip(profile.url, href));
-        }
-        if (profile.location) chips.push(chip(profile.location));
-        return chips;
-      };
+            const pdfs = incoming.filter(isPdf);
+            if (!pdfs.length) {
+              notice.value = "Please choose PDF files.";
+              return;
+            }
+            notice.value =
+              pdfs.length < incoming.length
+                ? `${incoming.length - pdfs.length} file(s) skipped because they are not PDFs.`
+                : "";
 
-      const renderEntry = ({ title, subtitle, date, descriptions = [] }) => {
-        const head = el(
-          "div",
-          { class: "entry-head" },
-          el(
-            "span",
-            { class: "left" },
-            title || "",
-            title && subtitle ? el("span", { class: "sep" }, " · ") : "",
-            subtitle ? el("span", { class: "company" }, subtitle) : ""
-          ),
-          date ? el("span", { class: "date" }, date) : null
-        );
-        const bullets = descriptions.length
-          ? el("ul", {}, ...descriptions.map((line) => el("li", {}, line)))
-          : null;
-        return el("div", { class: "entry" }, head, bullets);
-      };
+            for (const file of pdfs) {
+              applicants.value.push({
+                id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
+                file,
+                filename: file.name,
+                size: file.size,
+                status: "queued",
+                cv: null,
+                error: "",
+                ms: 0,
+              });
+            }
 
-      const renderSection = (title, entries) => {
-        if (!entries.length) return null;
-        return el(
-          "section",
-          {},
-          el("h3", { class: "section-title" }, title),
-          el("div", { class: "card" }, ...entries)
-        );
-      };
+            void processQueue();
+          };
 
-      const render = (cv, ms, bytes) => {
-        currentCv = cv;
-        nameEl.textContent = cv.profile.name || "Unnamed candidate";
+          const processQueue = async () => {
+            if (processing.value) return;
+            processing.value = true;
+            try {
+              // New files added while this runs are picked up by the next pass.
+              for (;;) {
+                const next = applicants.value.find((applicant) => applicant.status === "queued");
+                if (!next) break;
 
-        contactEl.replaceChildren(...contactChips(cv.profile));
-        summaryEl.textContent = cv.profile.summary;
-        summaryEl.hidden = !cv.profile.summary;
+                next.status = "reading";
+                try {
+                  const bytes = await next.file.arrayBuffer();
+                  const extractor = await getExtractor();
+                  const started = performance.now();
+                  next.cv = await extractor.extract(bytes);
+                  next.ms = performance.now() - started;
+                  next.status = "done";
+                } catch (error) {
+                  next.status = "error";
+                  next.error = friendlyError(error);
+                }
+              }
+            } finally {
+              processing.value = false;
+            }
+          };
 
-        const blocks = [];
-        blocks.push(
-          renderSection(
-            "Experience",
-            cv.experience.map((job) =>
-              renderEntry({
-                title: job.jobTitle,
-                subtitle: job.company,
-                date: job.date,
-                descriptions: job.descriptions,
-              })
-            )
-          )
-        );
-        blocks.push(
-          renderSection(
-            "Education",
-            cv.education.map((school) =>
-              renderEntry({
-                title: school.degree,
-                subtitle: school.school,
-                date: [school.date, school.gpa && "GPA " + school.gpa].filter(Boolean).join(" · "),
-                descriptions: school.descriptions,
-              })
-            )
-          )
-        );
-        blocks.push(
-          renderSection(
-            "Projects",
-            cv.projects.map((project) =>
-              renderEntry({
-                title: project.name,
-                date: project.date,
-                descriptions: project.descriptions,
-              })
-            )
-          )
-        );
+          const onPick = (event) => {
+            add(event.target.files);
+            event.target.value = ""; // picking the same file again still fires change
+          };
 
-        if (cv.skills.featured.length || cv.skills.descriptions.length) {
-          const card = el("div", { class: "card" });
-          if (cv.skills.featured.length) {
-            card.append(el("div", { class: "chips" }, ...cv.skills.featured.map((s) => chip(s))));
-          }
-          if (cv.skills.descriptions.length) {
-            card.append(
-              el("ul", { style: "margin: 10px 0 0; padding-left: 20px" },
-                ...cv.skills.descriptions.map((line) => el("li", {}, line)))
+          const onDrop = (event) => {
+            dragging.value = false;
+            add(event.dataTransfer?.files);
+          };
+
+          const onDragLeave = (event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) dragging.value = false;
+          };
+
+          const done = computed(() => applicants.value.filter((a) => a.status === "done").length);
+          const failed = computed(() => applicants.value.filter((a) => a.status === "error").length);
+
+          const summary = computed(() => {
+            const total = applicants.value.length;
+            const parts = [`${total} resume${total === 1 ? "" : "s"}`];
+            parts.push(`${done.value} extracted`);
+            if (failed.value) parts.push(`${failed.value} failed`);
+            return processing.value ? `Extracting… ${done.value}/${total}` : parts.join(" · ");
+          });
+
+          const title = (applicant) => {
+            if (applicant.status === "done") return applicant.cv.profile.name || "Unnamed candidate";
+            return applicant.filename;
+          };
+
+          const subtitle = (applicant) => {
+            if (applicant.status === "error") return applicant.error;
+            if (applicant.status === "queued") return `Waiting… ${applicant.filename}`;
+            if (applicant.status === "reading") return `Reading ${applicant.filename}…`;
+            const profile = applicant.cv.profile;
+            const contact = profile.email || profile.phone || profile.location;
+            if (contact) return contact;
+            return hasAny(applicant.cv)
+              ? "No contact details found"
+              : "No text layer found — scan or image?";
+          };
+
+          const initials = (applicant) => {
+            const source =
+              applicant.status === "done"
+                ? applicant.cv.profile.name || applicant.filename.replace(/\.pdf$/i, "")
+                : applicant.filename.replace(/\.pdf$/i, "");
+            return (
+              source
+                .split(/\s+/)
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((word) => word[0])
+                .join("")
+                .toUpperCase() || "?"
             );
-          }
-          blocks.push(el("section", {}, el("h3", { class: "section-title" }, "Skills"), card));
-        }
+          };
 
-        if (cv.certifications.length) {
-          blocks.push(
-            el(
-              "section",
-              {},
-              el("h3", { class: "section-title" }, "Certifications"),
-              el("div", { class: "card" }, el("div", { class: "chips" }, ...cv.certifications.map((c) => chip(c))))
-            )
+          const skillCount = (applicant) =>
+            applicant.cv.skills.featured.length + applicant.cv.skills.descriptions.length;
+
+          const hasAny = (cv) =>
+            Boolean(
+              cv &&
+                (cv.profile.name ||
+                  cv.profile.email ||
+                  cv.profile.phone ||
+                  cv.profile.summary ||
+                  cv.experience.length ||
+                  cv.education.length ||
+                  cv.projects.length ||
+                  cv.skills.featured.length ||
+                  cv.skills.descriptions.length ||
+                  cv.certifications.length ||
+                  cv.languages.length)
+            );
+
+          const urlHref = (value) =>
+            /^https?:\/\//i.test(value) ? value : "https://" + value;
+
+          const phoneHref = (value) => value.replace(/[^\d+]/g, "");
+
+          const json = computed(() =>
+            selected.value?.cv ? JSON.stringify(selected.value.cv, null, 2) : ""
           );
-        }
-        if (cv.languages.length) {
-          blocks.push(
-            el(
-              "section",
-              {},
-              el("h3", { class: "section-title" }, "Languages"),
-              el("div", { class: "card" }, el("div", { class: "chips" }, ...cv.languages.map((l) => chip(l))))
-            )
-          );
-        }
 
-        sectionsEl.replaceChildren(...blocks.filter(Boolean));
+          const openDetail = async (applicant) => {
+            if (applicant.status !== "done") return;
+            copied.value = false;
+            selected.value = applicant;
+            document.body.style.overflow = "hidden";
+            await nextTick();
+            closeButton.value?.focus();
+          };
 
-        const total = JSON.stringify(cv);
-        jsonEl.textContent = JSON.stringify(cv, null, 2);
-        resultEl.hidden = false;
+          const closeDetail = () => {
+            selected.value = null;
+            copied.value = false;
+            document.body.style.overflow = "";
+          };
 
-        const empty =
-          !cv.profile.name &&
-          !cv.profile.email &&
-          !cv.profile.phone &&
-          !cv.experience.length &&
-          !cv.education.length &&
-          !cv.skills.descriptions.length;
-        showNotice(
-          empty
-            ? "Nothing was extracted. This PDF probably has no text layer — it is a scan or an image, so it needs OCR before it can be parsed."
-            : ""
-        );
+          const remove = (applicant) => {
+            if (selected.value === applicant) closeDetail();
+            applicants.value = applicants.value.filter((item) => item.id !== applicant.id);
+          };
 
-        const size = (bytes / 1024).toFixed(0);
-        setStatus(`Extracted in ${ms.toFixed(1)} ms · ${size} kB · ${(total.length / 1024).toFixed(1)} kB of JSON`);
-      };
+          const clearAll = () => {
+            closeDetail();
+            applicants.value = [];
+            notice.value = "";
+          };
 
-      const handleFile = async (file) => {
-        if (!file) return;
-        if (!/\.pdf$/i.test(file.name) && file.type !== "application/pdf") {
-          showNotice("Please choose a PDF file.");
-          return;
-        }
+          const copyJson = async () => {
+            if (!selected.value?.cv) return;
+            try {
+              await navigator.clipboard.writeText(JSON.stringify(selected.value.cv, null, 2));
+              copied.value = true;
+              setTimeout(() => (copied.value = false), 1500);
+            } catch {
+              notice.value = "The browser blocked the clipboard. Use Download JSON instead.";
+            }
+          };
 
-        resultEl.hidden = true;
-        showNotice("");
-        setStatus(`Reading ${file.name}…`, "busy");
+          const downloadJson = () => {
+            const cv = selected.value?.cv;
+            if (!cv) return;
+            const base = cv.profile.name || selected.value.filename.replace(/\.pdf$/i, "") || "cv";
+            const slug = base.toLowerCase().replace(/[^\w.-]+/g, "-");
+            const blob = new Blob([JSON.stringify(cv, null, 2)], { type: "application/json" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = slug + ".json";
+            link.click();
+            URL.revokeObjectURL(link.href);
+          };
 
-        try {
-          const bytes = await file.arrayBuffer();
-          setStatus("Extracting…", "busy");
-          const extractor = await getExtractor();
+          const onKeydown = (event) => {
+            if (event.key === "Escape" && selected.value) closeDetail();
+          };
 
-          const started = performance.now();
-          const cv = await extractor.extract(bytes);
-          render(cv, performance.now() - started, bytes.byteLength);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          setStatus("Could not read that PDF.", "error");
-          showNotice(
-            message.includes("Failed to fetch") || message.includes("dynamically imported module")
-              ? "The demo could not load the built files. Run `npm run build` and serve the repo root over http (not file://), then open /example/."
-              : message
-          );
-        }
-      };
+          onMounted(() => {
+            window.addEventListener("keydown", onKeydown);
+            if (location.protocol === "file:") {
+              notice.value =
+                "This page must be served over http. Browsers block module and wasm loading from file://.";
+            }
+          });
+          onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 
-      fileInput.addEventListener("change", () => handleFile(fileInput.files?.[0]));
-
-      drop.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          fileInput.click();
-        }
-      });
-
-      for (const type of ["dragenter", "dragover"]) {
-        drop.addEventListener(type, (event) => {
-          event.preventDefault();
-          drop.classList.add("over");
-        });
-      }
-      for (const type of ["dragleave", "drop"]) {
-        drop.addEventListener(type, (event) => {
-          event.preventDefault();
-          drop.classList.remove("over");
-        });
-      }
-      drop.addEventListener("drop", (event) => handleFile(event.dataTransfer?.files?.[0]));
-
-      document.getElementById("copy").addEventListener("click", async (event) => {
-        if (!currentCv) return;
-        const button = event.currentTarget;
-        const label = button.textContent;
-        try {
-          await navigator.clipboard.writeText(JSON.stringify(currentCv, null, 2));
-          button.textContent = "Copied";
-          setTimeout(() => (button.textContent = label), 1400);
-        } catch {
-          showNotice("The browser blocked the clipboard. Use Download JSON instead.");
-        }
-      });
-
-      document.getElementById("download").addEventListener("click", () => {
-        if (!currentCv) return;
-        const slug = (currentCv.profile.name || "cv").toLowerCase().replace(/[^\w.-]+/g, "-");
-        const blob = new Blob([JSON.stringify(currentCv, null, 2)], { type: "application/json" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = slug + ".json";
-        link.click();
-        URL.revokeObjectURL(link.href);
-      });
-
-      document.getElementById("reset").addEventListener("click", () => {
-        currentCv = null;
-        fileInput.value = "";
-        resultEl.hidden = true;
-        setStatus("");
-        showNotice("");
-        fileInput.click();
-      });
-
-      if (location.protocol === "file:") {
-        showNotice(
-          "This page must be served over http. Browsers block module and wasm loading from file://."
-        );
-      }
+          return {
+            applicants,
+            selected,
+            dragging,
+            notice,
+            processing,
+            copied,
+            closeButton,
+            summary,
+            onPick,
+            onDrop,
+            onDragLeave,
+            title,
+            subtitle,
+            initials,
+            skillCount,
+            hasAny,
+            urlHref,
+            phoneHref,
+            json,
+            openDetail,
+            closeDetail,
+            remove,
+            clearAll,
+            copyJson,
+            downloadJson,
+          };
+        },
+      }).mount("#app");
     </script>
   </body>
 </html>

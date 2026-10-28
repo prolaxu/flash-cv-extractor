@@ -117,8 +117,10 @@ console.table(rows);
 
 ### Run the browser demo
 
-[`example/index.html`](./example/index.html) is a working page: choose a PDF
-and it renders the extracted CV, with copy and download for the raw JSON.
+[`example/index.html`](./example/index.html) is a working page built with Vue 3
+and Tailwind from CDNs: select or drop several PDFs, get a list of applicants,
+and click one to open the full CV in a dialog, with copy and download for the
+raw JSON.
 
 ```bash
 npm run build
@@ -126,7 +128,8 @@ npx serve .        # open http://localhost:3000/example/
 ```
 
 It imports the built files from `dist/`, so it must be served over http rather
-than opened from `file://`.
+than opened from `file://`. The Vue and Tailwind CDNs need network access; the
+extraction itself stays local.
 
 ## Result
 
